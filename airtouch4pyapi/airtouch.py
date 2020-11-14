@@ -1,8 +1,8 @@
 import socket
 import libscrc
-import helper
-import packetmap
-import communicate
+from airtouch4pyapi import helper
+from airtouch4pyapi import packetmap
+from airtouch4pyapi import communicate
 #API
 
 # class Airtouch

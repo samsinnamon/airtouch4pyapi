@@ -1,4 +1,4 @@
-import packetmap
+from airtouch4pyapi import packetmap
 import libscrc
 import socket
 
