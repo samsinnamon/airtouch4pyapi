@@ -1,1 +1,7 @@
 __pycache__/*
+build/*
+dist/*
+airtouch4pyapi.egg-info/dependency_links.txt
+airtouch4pyapi.egg-info/PKG-INFO
+airtouch4pyapi.egg-info/SOURCES.txt
+airtouch4pyapi.egg-info/top_level.txt

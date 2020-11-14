@@ -308,6 +308,3 @@ class AirTouch:
 
     def _getTargetGroup(self, groupName):
         return [group for group in self.groups.values() if group.GroupName == groupName][0]
-
-airTouch = AirTouch("192.168.1.19")
-pass
