@@ -1,6 +1,7 @@
 from airtouch4pyapi import packetmap
-import libscrc
 import socket
+import errno
+from socket import error as socket_error
 
 def MessageObjectToMessagePacket(messageObject, mapName):
     messageString = "80b001";
@@ -56,13 +57,37 @@ def TranslateMapValueToValue(groupChunk, map):
 
 def SendMessagePacketToAirtouch(messageString, ipAddress):
     #add header, add crc
-    messageString = "5555" + messageString + format(libscrc.modbus(bytes.fromhex(messageString)), '08x')[4:];
+    messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:];
 
     TCP_PORT = 9004
     BUFFER_SIZE = 4096
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((ipAddress, TCP_PORT))
-    s.send(bytearray.fromhex(messageString))
-    data = s.recv(BUFFER_SIZE)
-    s.close()
+    s.settimeout(7)
+    data = ""
+    try:
+        s.connect((ipAddress, TCP_PORT))
+        s.send(bytearray.fromhex(messageString))
+        data = s.recv(BUFFER_SIZE)
+        s.close()
+    except socket_error as serr:
+        data = serr;
     return data;
+
+import numpy as np
+
+def crc16(data: bytes):
+    '''
+    CRC-16-ModBus Algorithm
+    '''
+    data = bytearray(data)
+    poly = 0xA001
+    crc = 0xFFFF
+    for b in data:
+        crc ^= (0xFF & b)
+        for _ in range(0, 8):
+            if (crc & 0x0001):
+                crc = ((crc >> 1) & 0xFFFF) ^ poly
+            else:
+                crc = ((crc >> 1) & 0xFFFF)
+
+    return np.uint16(crc)

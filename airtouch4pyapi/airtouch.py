@@ -1,5 +1,4 @@
 import socket
-import libscrc
 from airtouch4pyapi import helper
 from airtouch4pyapi import packetmap
 from airtouch4pyapi import communicate
@@ -32,8 +31,8 @@ class AirTouchGroup:
         self.GroupNumber = 0
         self.IsOn = True
         self.OpenPercent = 0
-        self.CurrentRoomTemp = 0
-        self.TargetRoomTemp = 0
+        self.Temperature = 0
+        self.TargetSetpoint = 0
         self.BelongsToAc = -1
 
 class AirTouchAc:
@@ -44,15 +43,21 @@ class AirTouchAc:
 
 class AirTouch:
     IpAddress = "";
+    SettingValueTranslator = packetmap.SettingValueTranslator();
     def __init__(self, ipAddress):
+        self.IpAddress = ipAddress;
+        self.UpdateInfo();
+
+    def UpdateInfo(self):
         self.acs = dict();
         self.groups = dict();
-        self.IpAddress = ipAddress;
-        
         #get the group infos
         message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus");
         self.SendMessageToAirtouch(message)
 
+        #if the first call gets an error, not worth doing the subsequent ones
+        if hasattr(self, "error"):
+            return;
         #get the group nicknames
         nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName");
         self.SendMessageToAirtouch(nameMessage)
@@ -86,16 +91,13 @@ class AirTouch:
         targetGroup = self._getTargetGroup(groupName)
         return self.SetGroupToTemperature(targetGroup.GroupNumber, temperature);
 
-    #SetCoolingModeByGroup
-    #SetFanSpeedByGroup
-    #GetSupportedCoolingModesByGroup
-    #GetSupportedFanSpeedsByGroup
-
     def SetCoolingModeByGroup(self, groupNumber, coolingMode):
         self.SetCoolingModeForAc(self.groups[groupNumber].BelongsToAc, coolingMode);
+        return self.groups[groupNumber];
 
     def SetFanSpeedByGroup(self, groupNumber, fanSpeed):
         self.SetFanSpeedForAc(self.groups[groupNumber].BelongsToAc, fanSpeed);
+        return self.groups[groupNumber];
 
     def GetSupportedCoolingModesByGroup(self, groupNumber):
         return self.GetSupportedCoolingModesForAc(self.groups[groupNumber].BelongsToAc);
@@ -108,6 +110,7 @@ class AirTouch:
         controlMessage.SetMessageValue("Power", 3)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
         self.SendMessageToAirtouch(controlMessage)
+        return self.groups[groupNumber];
 
     def TurnAcOn(self, acNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl");
@@ -166,6 +169,7 @@ class AirTouch:
         controlMessage.SetMessageValue("Power", 2)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
         self.SendMessageToAirtouch(controlMessage)
+        return self.groups[groupNumber];
 
     def SetGroupToTemperature(self, groupNumber, temperature):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
@@ -175,17 +179,21 @@ class AirTouch:
         controlMessage.SetMessageValue("TargetSetpoint", temperature)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
         self.SendMessageToAirtouch(controlMessage)
+        return self.groups[groupNumber];
         #should this turn the group on?
 
     def GetAcs(self):
-        acs = [AirTouchAc];
+        acs = [];
         for acNumber in self.acs.keys(): 
-            ac = self.groups[acNumber]
+            ac = self.acs[acNumber]
             acs.append(ac);
         return acs;
+    
+    def GetGroupByGroupNumber(self, groupNumber):
+        return self.groups[groupNumber];
 
     def GetGroups(self):
-        groups = [AirTouchGroup];
+        groups = [];
         for groupNumber in self.groups.keys(): 
             groupInfo = self.groups[groupNumber]
             groups.append(groupInfo);
@@ -213,6 +221,10 @@ class AirTouch:
 
 
     def TranslatePacketToMessage(self, dataResult):
+
+        if(isinstance(dataResult, Exception)):
+            self.error = dataResult;
+            return;
         address = dataResult[2:4]
         messageId = dataResult[4:5]
         messageType = dataResult[5:6]
