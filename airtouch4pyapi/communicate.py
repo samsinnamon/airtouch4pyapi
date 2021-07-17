@@ -1,5 +1,5 @@
 from airtouch4pyapi import packetmap
-import socket
+import asyncio
 import errno
 from socket import error as socket_error
 
@@ -55,20 +55,19 @@ def TranslateMapValueToValue(groupChunk, map):
     byteSegmentAsValue = int(byteSegment, 2)
     return byteSegmentAsValue
 
-def SendMessagePacketToAirtouch(messageString, ipAddress):
+async def SendMessagePacketToAirtouch(messageString, ipAddress):
     #add header, add crc
-    messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:];
+    messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
 
     TCP_PORT = 9004
     BUFFER_SIZE = 4096
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.settimeout(7)
+    reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
+
     data = ""
     try:
-        s.connect((ipAddress, TCP_PORT))
-        s.send(bytearray.fromhex(messageString))
-        data = s.recv(BUFFER_SIZE)
-        s.close()
+        writer.write(bytearray.fromhex(messageString))
+        response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
+        data = response
     except socket_error as serr:
         data = serr;
     return data;

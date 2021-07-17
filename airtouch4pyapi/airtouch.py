@@ -46,29 +46,32 @@ class AirTouch:
     SettingValueTranslator = packetmap.SettingValueTranslator();
     def __init__(self, ipAddress):
         self.IpAddress = ipAddress;
-        self.UpdateInfo();
 
-    def UpdateInfo(self):
+    async def UpdateInfo(self):
+        #if we are trying to call this again, clear out the errors from last time - we want to still
+        #be able to keep going if theres a hiccup such as a bad network connection
+        if hasattr(self, "error"):
+            delattr(self, "error");
         self.acs = dict();
         self.groups = dict();
         #get the group infos
         message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus");
-        self.SendMessageToAirtouch(message)
+        await self.SendMessageToAirtouch(message)
 
         #if the first call gets an error, not worth doing the subsequent ones
         if hasattr(self, "error"):
             return;
         #get the group nicknames
         nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName");
-        self.SendMessageToAirtouch(nameMessage)
+        await self.SendMessageToAirtouch(nameMessage)
 
         #get ac infos
         acsMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcStatus");
-        self.SendMessageToAirtouch(acsMessage)
+        await self.SendMessageToAirtouch(acsMessage)
 
         #allocate acs to groups (ac ability?)
         acAbilityMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcAbility");
-        self.SendMessageToAirtouch(acAbilityMessage)
+        await self.SendMessageToAirtouch(acAbilityMessage)
 
         for group in self.groups.values():
             #find out which ac this group belongs to
@@ -79,24 +82,24 @@ class AirTouch:
                 if(ac.StartGroupNumber <= group.GroupNumber and ac.StartGroupNumber + ac.GroupCount <= group.GroupNumber):
                     group.BelongsToAc = ac.AcNumber
 
-    def TurnGroupOnByName(self, groupName):
+    async def TurnGroupOnByName(self, groupName):
         targetGroup = self._getTargetGroup(groupName)
-        return self.TurnGroupOn(targetGroup.GroupNumber);
+        await self.TurnGroupOn(targetGroup.GroupNumber);
 
-    def TurnGroupOffByName(self, groupName):
+    async def TurnGroupOffByName(self, groupName):
         targetGroup = self._getTargetGroup(groupName)
-        return self.TurnGroupOff(targetGroup.GroupNumber);
+        await self.TurnGroupOff(targetGroup.GroupNumber);
     
-    def SetGroupToTemperatureByGroupName(self, groupName, temperature):
+    async def SetGroupToTemperatureByGroupName(self, groupName, temperature):
         targetGroup = self._getTargetGroup(groupName)
-        return self.SetGroupToTemperature(targetGroup.GroupNumber, temperature);
+        await self.SetGroupToTemperature(targetGroup.GroupNumber, temperature);
 
-    def SetCoolingModeByGroup(self, groupNumber, coolingMode):
+    async def SetCoolingModeByGroup(self, groupNumber, coolingMode):
         self.SetCoolingModeForAc(self.groups[groupNumber].BelongsToAc, coolingMode);
         return self.groups[groupNumber];
 
-    def SetFanSpeedByGroup(self, groupNumber, fanSpeed):
-        self.SetFanSpeedForAc(self.groups[groupNumber].BelongsToAc, fanSpeed);
+    async def SetFanSpeedByGroup(self, groupNumber, fanSpeed):
+        await self.SetFanSpeedForAc(self.groups[groupNumber].BelongsToAc, fanSpeed);
         return self.groups[groupNumber];
 
     def GetSupportedCoolingModesByGroup(self, groupNumber):
@@ -105,14 +108,14 @@ class AirTouch:
     def GetSupportedFanSpeedsByGroup(self, groupNumber):
         return self.GetSupportedFanSpeedsForAc(self.groups[groupNumber].BelongsToAc);
 
-    def TurnGroupOn(self, groupNumber):
+    async def TurnGroupOn(self, groupNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
         controlMessage.SetMessageValue("Power", 3)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
 
-    def TurnAcOn(self, acNumber):
+    async def TurnAcOn(self, acNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl");
         #these are required to leave these settings unchanged
         controlMessage.SetMessageValue("AcMode", 0x0f);
@@ -121,10 +124,10 @@ class AirTouch:
 
         controlMessage.SetMessageValue("Power", 3)
         controlMessage.SetMessageValue("AcNumber", acNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
     
     #use a fanspeed reported from GetSupportedFanSpeedsForAc
-    def SetFanSpeedForAc(self, acNumber, fanSpeed):
+    async def SetFanSpeedForAc(self, acNumber, fanSpeed):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl");
         #these are required to leave these settings unchanged
         controlMessage.SetMessageValue("AcMode", 0x0f);
@@ -132,10 +135,10 @@ class AirTouch:
         controlMessage.SetMessageValue("TargetSetpoint", 0x3f);
 
         controlMessage.SetMessageValue("AcNumber", acNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
 
     #use a mode reported from GetSupportedCoolingModesForAc
-    def SetCoolingModeForAc(self, acNumber, acMode):
+    async def SetCoolingModeForAc(self, acNumber, acMode):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl");
         #these are required to leave these settings unchanged
         controlMessage.SetMessageValue("AcMode", packetmap.SettingValueTranslator.NamedValueToRawValue("AcMode", acMode));
@@ -143,7 +146,7 @@ class AirTouch:
         controlMessage.SetMessageValue("TargetSetpoint", 0x3f);
 
         controlMessage.SetMessageValue("AcNumber", acNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
 
     #GetSupportedCoolingModesForAc
     def GetSupportedCoolingModesForAc(self, acNumber):
@@ -153,7 +156,7 @@ class AirTouch:
     def GetSupportedFanSpeedsForAc(self, acNumber):
         return self.acs[acNumber].FanSpeedSupported;
 
-    def TurnAcOff(self, acNumber):
+    async def TurnAcOff(self, acNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl");
         #these are required to leave these settings unchanged
         controlMessage.SetMessageValue("AcMode", 0x0f);
@@ -162,23 +165,23 @@ class AirTouch:
 
         controlMessage.SetMessageValue("Power", 2)
         controlMessage.SetMessageValue("AcNumber", acNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
     
-    def TurnGroupOff(self, groupNumber):
+    async def TurnGroupOff(self, groupNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
         controlMessage.SetMessageValue("Power", 2)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
 
-    def SetGroupToTemperature(self, groupNumber, temperature):
+    async def SetGroupToTemperature(self, groupNumber, temperature):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
         controlMessage.SetMessageValue("Power", 3)
         controlMessage.SetMessageValue("HaveTemperatureControl", 3)
         controlMessage.SetMessageValue("GroupSettingValue", 5)
         controlMessage.SetMessageValue("TargetSetpoint", temperature)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
-        self.SendMessageToAirtouch(controlMessage)
+        await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
         #should this turn the group on?
 
@@ -200,7 +203,7 @@ class AirTouch:
         return groups;
         #returns a list of groups, each group has a name, a number, on or off, current damper opening, current temp and target temp
 
-    def SendMessageToAirtouch(self, messageObject):
+    async def SendMessageToAirtouch(self, messageObject):
         if(messageObject.MessageType == "GroupStatus"):
             MESSAGE = "80b0012b0000"
         
@@ -216,12 +219,12 @@ class AirTouch:
         if(messageObject.MessageType == "GroupControl" or messageObject.MessageType == "AcControl"):
             MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType);
         
-        dataResult = communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
+        dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
         return self.TranslatePacketToMessage(dataResult)
 
 
     def TranslatePacketToMessage(self, dataResult):
-
+        #If the request hasn't gone well, we don't want to update any of the data we have with bad/no data
         if(isinstance(dataResult, Exception)):
             self.error = dataResult;
             return;

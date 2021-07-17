@@ -7,22 +7,25 @@ I am using this with my own Airtouch 4 and see no issues. Please don't blame me 
 To initialise:
 `airTouch = AirTouch("192.168.1.19")`
 
+To load:
+`await airTouch.UpdateInfo();`
+
 The following functions are available:
 
 Group Level Functions:
-`SetGroupToTemperature`
-`TurnGroupOn`
-`TurnGroupOff`
-`SetCoolingModeByGroup`
-`SetFanSpeedByGroup`
+`SetGroupToTemperature` (async)
+`TurnGroupOn` (async)
+`TurnGroupOff` (async)
+`SetCoolingModeByGroup` (async)
+`SetFanSpeedByGroup` (async)
 `GetSupportedCoolingModesByGroup`
 `GetSupportedFanSpeedsByGroup`
 
 AC Level Functions
-`TurnAcOn`
-`TurnAcOff`
-`SetFanSpeedForAc`
-`SetCoolingModeForAc`
+`TurnAcOn` (async)
+`TurnAcOff` (async)
+`SetFanSpeedForAc` (async)
+`SetCoolingModeForAc` (async)
 `GetSupportedCoolingModesForAc`
 `GetSupportedFanSpeedsForAc`
 `GetAcs`
