@@ -96,7 +96,7 @@ class AirTouch:
 
     async def SetGroupToPercentByGroupName(self, groupName, percent):
         targetGroup = self._getTargetGroup(groupName)
-        await self.SetGroupToTemperature(targetGroup.GroupNumber, percent);
+        await self.SetGroupToPercentage(targetGroup.GroupNumber, percent);
 
     async def SetCoolingModeByGroup(self, groupNumber, coolingMode):
         self.SetCoolingModeForAc(self.groups[groupNumber].BelongsToAc, coolingMode);
@@ -189,7 +189,7 @@ class AirTouch:
         return self.groups[groupNumber];
         #should this turn the group on?
 
-    async def SetGroupToTPercentage(self, groupNumber, percent):
+    async def SetGroupToPercentage(self, groupNumber, percent):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
         controlMessage.SetMessageValue("Power", 3)
         controlMessage.SetMessageValue("HaveTemperatureControl", 3)
