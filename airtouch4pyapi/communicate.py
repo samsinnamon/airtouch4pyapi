@@ -55,6 +55,7 @@ def TranslateMapValueToValue(groupChunk, map):
     byteSegmentAsValue = int(byteSegment, 2)
     return byteSegmentAsValue
 
+#might raise a socket or os error if connection fails
 async def SendMessagePacketToAirtouch(messageString, ipAddress):
     #add header, add crc
     messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
@@ -63,18 +64,13 @@ async def SendMessagePacketToAirtouch(messageString, ipAddress):
     BUFFER_SIZE = 4096
     reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
 
-    data = ""
-    try:
-        writer.write(bytearray.fromhex(messageString))
-        response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
-        data = response
-    except socket_error as serr:
-        data = serr;
+    writer.write(bytearray.fromhex(messageString))
+    response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
     
     writer.close()
     await writer.wait_closed()
 
-    return data;
+    return response;
 
 import numpy as np
 

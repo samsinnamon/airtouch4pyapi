@@ -2,6 +2,7 @@ import socket
 from airtouch4pyapi import helper
 from airtouch4pyapi import packetmap
 from airtouch4pyapi import communicate
+from enum import Enum
 #API
 
 # class Airtouch
@@ -25,6 +26,14 @@ from airtouch4pyapi import communicate
         #GetSupportedFanSpeedsForAc
         #GetAcs
 
+class AirTouchStatus(Enum):
+    NOT_CONNECTED = 0,
+    OK = 1,
+    CONNECTION_INTERRUPTED = 2,
+    CONNECTION_LOST = 3,
+    ERROR = 4
+
+
 class AirTouchGroup:
     def __init__(self):
         self.GroupName = ""
@@ -46,20 +55,17 @@ class AirTouch:
     SettingValueTranslator = packetmap.SettingValueTranslator();
     def __init__(self, ipAddress):
         self.IpAddress = ipAddress;
+        self.Status = AirTouchStatus.NOT_CONNECTED
 
     async def UpdateInfo(self):
-        #if we are trying to call this again, clear out the errors from last time - we want to still
-        #be able to keep going if theres a hiccup such as a bad network connection
-        if hasattr(self, "error"):
-            delattr(self, "error");
         self.acs = dict();
         self.groups = dict();
         #get the group infos
         message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus");
         await self.SendMessageToAirtouch(message)
 
-        #if the first call gets an error, not worth doing the subsequent ones
-        if hasattr(self, "error"):
+        #if the first call means we still have an error status, not worth doing the subsequent ones
+        if(self.Status != AirTouchStatus.OK):
             return;
         #get the group nicknames
         nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName");
@@ -233,14 +239,21 @@ class AirTouch:
         if(messageObject.MessageType == "GroupControl" or messageObject.MessageType == "AcControl"):
             MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType);
         
-        dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
+        try: 
+            dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
+            self.Status = AirTouchStatus.OK
+        except: 
+            if(self.Status == AirTouchStatus.OK):
+                self.Status = AirTouchStatus.CONNECTION_INTERRUPTED
+            else:
+                self.Status = AirTouchStatus.CONNECTION_LOST
+
         return self.TranslatePacketToMessage(dataResult)
 
 
     def TranslatePacketToMessage(self, dataResult):
         #If the request hasn't gone well, we don't want to update any of the data we have with bad/no data
-        if(isinstance(dataResult, Exception)):
-            self.error = dataResult;
+        if(self.Status != AirTouchStatus.OK):
             return;
         address = dataResult[2:4]
         messageId = dataResult[4:5]
