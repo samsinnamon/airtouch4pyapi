@@ -70,6 +70,10 @@ async def SendMessagePacketToAirtouch(messageString, ipAddress):
         data = response
     except socket_error as serr:
         data = serr;
+    
+    writer.close()
+    await writer.wait_closed()
+
     return data;
 
 import numpy as np
