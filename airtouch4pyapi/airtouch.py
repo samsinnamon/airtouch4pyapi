@@ -94,6 +94,10 @@ class AirTouch:
         targetGroup = self._getTargetGroup(groupName)
         await self.SetGroupToTemperature(targetGroup.GroupNumber, temperature);
 
+    async def SetGroupToPercentByGroupName(self, groupName, percent):
+        targetGroup = self._getTargetGroup(groupName)
+        await self.SetGroupToPercentage(targetGroup.GroupNumber, percent);
+
     async def SetCoolingModeByGroup(self, groupNumber, coolingMode):
         self.SetCoolingModeForAc(self.groups[groupNumber].BelongsToAc, coolingMode);
         return self.groups[groupNumber];
@@ -184,6 +188,16 @@ class AirTouch:
         await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
         #should this turn the group on?
+
+    async def SetGroupToPercentage(self, groupNumber, percent):
+        controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupControl");
+        controlMessage.SetMessageValue("Power", 3)
+        controlMessage.SetMessageValue("HaveTemperatureControl", 3)
+        controlMessage.SetMessageValue("GroupSettingValue", 4)
+        controlMessage.SetMessageValue("TargetSetpoint", percent)
+        controlMessage.SetMessageValue("GroupNumber", groupNumber)
+        await self.SendMessageToAirtouch(controlMessage)
+        return self.groups[groupNumber];
 
     def GetAcs(self):
         acs = [];
