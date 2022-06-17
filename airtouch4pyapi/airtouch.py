@@ -1,4 +1,5 @@
 import socket
+from typing import List
 from airtouch4pyapi import helper
 from airtouch4pyapi import packetmap
 from airtouch4pyapi import communicate
@@ -44,6 +45,11 @@ class AirTouchGroup:
         self.TargetSetpoint = 0
         self.BelongsToAc = -1
 
+class AirTouchError:
+    def __init__(self):
+        self.Message = ""
+        self.Status = AirTouchStatus.OK
+
 class AirTouchAc:
     def __init__(self):
         self.AcName = ""
@@ -55,11 +61,13 @@ class AirTouch:
     SettingValueTranslator = packetmap.SettingValueTranslator();
     def __init__(self, ipAddress):
         self.IpAddress = ipAddress;
-        self.Status = AirTouchStatus.NOT_CONNECTED
+        self.Status = AirTouchStatus.NOT_CONNECTED;
+        self.Messages = dict();
 
     async def UpdateInfo(self):
         self.acs = dict();
         self.groups = dict();
+        self.Messages:List[AirTouchError] = [];
         #get the group infos
         message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus");
         await self.SendMessageToAirtouch(message)
@@ -242,11 +250,16 @@ class AirTouch:
         try: 
             dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
             self.Status = AirTouchStatus.OK
-        except: 
+        except Exception as e: 
             if(self.Status == AirTouchStatus.OK):
                 self.Status = AirTouchStatus.CONNECTION_INTERRUPTED
             else:
                 self.Status = AirTouchStatus.CONNECTION_LOST
+
+            errorMessage = AirTouchError()
+            errorMessage.Message = "Could not send message to airtouch: " + str(e)
+            self.Messages.append(errorMessage)
+            return
 
         return self.TranslatePacketToMessage(dataResult)
 
