@@ -4,6 +4,7 @@ from airtouch4pyapi import helper
 from airtouch4pyapi import packetmap
 from airtouch4pyapi import communicate
 from enum import Enum
+
 #API
 
 # class Airtouch
@@ -34,6 +35,9 @@ class AirTouchStatus(Enum):
     CONNECTION_LOST = 3,
     ERROR = 4
 
+class AirTouchVersion(Enum):
+    AIRTOUCH4 = 4,
+    AIRTOUCH5 = 5
 
 class AirTouchGroup:
     def __init__(self):
@@ -59,32 +63,36 @@ class AirTouchAc:
 class AirTouch:
     IpAddress = "";
     SettingValueTranslator = packetmap.SettingValueTranslator();
-    def __init__(self, ipAddress):
+    def __init__(self, ipAddress, atVersion = AirTouchVersion.AIRTOUCH4):
         self.IpAddress = ipAddress;
         self.Status = AirTouchStatus.NOT_CONNECTED;
         self.Messages = dict();
-
+        self.atVersion = atVersion;
+    
     async def UpdateInfo(self):
         self.acs = dict();
         self.groups = dict();
         self.Messages:List[AirTouchError] = [];
         #get the group infos
-        message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus");
+        message = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupStatus", self.atVersion);
         await self.SendMessageToAirtouch(message)
+### test
+        return
+
 
         #if the first call means we still have an error status, not worth doing the subsequent ones
         if(self.Status != AirTouchStatus.OK):
             return;
         #get the group nicknames
-        nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName");
+        nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName", self.atVersion);
         await self.SendMessageToAirtouch(nameMessage)
 
         #get ac infos
-        acsMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcStatus");
+        acsMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcStatus", self.atVersion);
         await self.SendMessageToAirtouch(acsMessage)
 
         #allocate acs to groups (ac ability?)
-        acAbilityMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcAbility");
+        acAbilityMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcAbility", self.atVersion);
         await self.SendMessageToAirtouch(acAbilityMessage)
 
         for group in self.groups.values():
@@ -234,21 +242,30 @@ class AirTouch:
     async def SendMessageToAirtouch(self, messageObject):
         if(messageObject.MessageType == "GroupStatus"):
             MESSAGE = "80b0012b0000"
+        if(messageObject.MessageType == "GroupStatus5"):
+            MESSAGE = "80b001c000082100000000000000"
         
         if(messageObject.MessageType == "GroupName"):
+            
             MESSAGE = "90b0011f0002ff12"
+        if(messageObject.MessageType == "GroupName5"):
+            MESSAGE = ""
         
         if(messageObject.MessageType == "AcAbility"):
             MESSAGE = "90b0011f0002ff11"
+        if(messageObject.MessageType == "AcAbility5"):
+            MESSAGE = ""
 
-        if(messageObject.MessageType == "AcStatus"):
+        if(messageObject.MessageType == "AcStatus"): 
             MESSAGE = "80b0012d0000f4cf"
+        if(messageObject.MessageType == "AcStatus5"):
+            MESSAGE = ""
 
         if(messageObject.MessageType == "GroupControl" or messageObject.MessageType == "AcControl"):
             MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType);
         
         try: 
-            dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress)
+            dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress, self.atVersion)
             self.Status = AirTouchStatus.OK
         except Exception as e: 
             if(self.Status == AirTouchStatus.OK):
@@ -273,7 +290,7 @@ class AirTouch:
         messageType = dataResult[5:6]
         dataLength = dataResult[6:8]
 
-        if(messageType == b'\x2b'):
+        if(messageType == b'\xc0'):
             self.DecodeAirtouchGroupStatusMessage(dataResult[8::]);
         if(messageType == b'\x1f'):
                 self.DecodeAirtouchExtendedMessage(dataResult[8::]);

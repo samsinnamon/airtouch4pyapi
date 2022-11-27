@@ -1,1 +1,1 @@
-from airtouch4pyapi.airtouch import AirTouch, AirTouchStatus
+from airtouch4pyapi.airtouch import AirTouch, AirTouchStatus, AirTouchVersion

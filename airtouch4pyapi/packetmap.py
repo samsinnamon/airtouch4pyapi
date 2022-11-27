@@ -78,6 +78,17 @@ class DataLocationTranslator:
             "Temperature" : "5:6-16",
             "Spill": "6:5-5"
         },
+        "GroupStatus5" : {
+            "PowerState" : "1:7-8",
+            "GroupNumber" : "1:1-6",
+            "ControlMethod" : "2:8-8",
+            "OpenPercentage" : "2:1-7",
+            "BatteryLow" : "7:1-1",
+            "TargetSetpoint" : "3:1-8",
+            "Sensor" : "4:8-8",
+            "Temperature" : "5:1-16",
+            "Spill": "7:2-2"
+        },
         "AcStatus" : {
             "PowerState" : "1:7-8",
             "AcNumber" : "1:1-6",
@@ -141,7 +152,9 @@ class Message():
 
 class MessageFactory:
     @staticmethod
-    def CreateEmptyMessageOfType(messageType):
+    def CreateEmptyMessageOfType(messageType, atVersion):
+        if(atVersion.value == 5):
+            messageType = messageType + "5"
         message = Message(messageType);
         for attr in DataLocationTranslator.map[messageType]:
             message.MessageValues[attr] = 0;

@@ -2,6 +2,8 @@ from airtouch4pyapi import packetmap
 import asyncio
 import errno
 from socket import error as socket_error
+#### CEMIL TEST
+from hexdump import hexdump
 
 def MessageObjectToMessagePacket(messageObject, mapName):
     messageString = "80b001";
@@ -56,18 +58,19 @@ def TranslateMapValueToValue(groupChunk, map):
     return byteSegmentAsValue
 
 #might raise a socket or os error if connection fails
-async def SendMessagePacketToAirtouch(messageString, ipAddress):
+async def SendMessagePacketToAirtouch(messageString, ipAddress, atVersion):
     #add header, add crc
-    messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
-
-    TCP_PORT = 9004
+    messageString = "555555aa" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
+    if(atVersion.value == 5):
+        TCP_PORT = 9005
+    else:
+        TCP_PORT = 9004
     BUFFER_SIZE = 4096
     reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
-
     writer.write(bytearray.fromhex(messageString))
     response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
-    
     writer.close()
+    print(hexdump(response))
     await writer.wait_closed()
 
     return response;
