@@ -257,7 +257,7 @@ class DataLocationTranslator:
                 "Temperature" : "5:1-16",
             },
             "GroupControl" : {
-                "GroupNumber" : "1:1-8",
+                "GroupNumber" : "1:1-6",
                 "GroupSettingValue" : "2:6-8",
                 "Power" : "2:1-3",
                 "TargetSetpoint" : "3:1-8",
