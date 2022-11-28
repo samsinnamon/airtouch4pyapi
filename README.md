@@ -1,11 +1,17 @@
-# Airtouch 4 Python TCP API
-An api allowing control of AC state (temperature, on/off, mode) of an Airtouch 4 controller locally over TCP.
+# Airtouch 4 & 5 Python TCP API
+An api allowing control of AC state (temperature, on/off, mode) of an Airtouch 4 controller locally over TCP.  Airtouch 5 support is experimental as of 28 Nov 2022, and is fully interface compatible with AT4.  
+
+All you need to do is initialise and specify the correct AirTouchVersion (if you don't, it assumes 4).  
 
 ## Warning
 I am using this with my own Airtouch 4 and see no issues. Please don't blame me if you have any issues with your Airtouch 4 or AC system after using this - I don't know much about AC systems and will probably not be able to help!
+
+Others are using it with Airtouch 5 and see no issues.  
+
 ## Usage
 To initialise:
-`airTouch = AirTouch("192.168.1.19")`
+* `airTouch = AirTouch("192.168.1.19")`
+* `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5)`
 
 To load:
 `await airTouch.UpdateInfo();`
