@@ -14,25 +14,25 @@ To initialise:
 * `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5)`
 
 To load:
-`await airTouch.UpdateInfo();`
+* `await airTouch.UpdateInfo();` -- This loads the config from the AirTouch.  Make sure you check for any errors before using it.  It will load the Group/Zone info, the AC info, then capabilities.  This needs to happen prior to using. 
 
 The following functions are available:
 
 Group Level Functions:
-`SetGroupToTemperature` (async)
-`TurnGroupOn` (async)
-`TurnGroupOff` (async)
-`SetCoolingModeByGroup` (async)
-`SetFanSpeedByGroup` (async)
-`GetSupportedCoolingModesByGroup`
-`GetSupportedFanSpeedsByGroup`
+* `SetGroupToTemperature` (async)
+* `TurnGroupOn` (async)
+* `TurnGroupOff` (async)
+* `SetCoolingModeByGroup` (async)
+* `SetFanSpeedByGroup` (async)
+* `GetSupportedCoolingModesByGroup` -- Based on the loaded config.
+* `GetSupportedFanSpeedsByGroup` -- Based on the loaded config.
 
 AC Level Functions
-`TurnAcOn` (async)
-`TurnAcOff` (async)
-`SetFanSpeedForAc` (async)
-`SetCoolingModeForAc` (async)
-`GetSupportedCoolingModesForAc`
-`GetSupportedFanSpeedsForAc`
-`GetAcs`
+* `TurnAcOn` (async)
+* `TurnAcOff` (async)
+* `SetFanSpeedForAc` (async)
+* `SetCoolingModeForAc` (async)
+* `GetSupportedCoolingModesForAc`
+* `GetSupportedFanSpeedsForAc`
+* `GetAcs`
 
