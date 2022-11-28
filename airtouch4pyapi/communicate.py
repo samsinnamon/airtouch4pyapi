@@ -83,16 +83,11 @@ async def SendMessagePacketToAirtouch(messageString, ipAddress, atVersion):
     else:
         TCP_PORT = 9004
     BUFFER_SIZE = 4096
-    print("---sending---")
-    hexdump(bytearray.fromhex(messageString))
+
     reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
     writer.write(bytearray.fromhex(messageString))
     response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
     writer.close()
-    ### CEMIL TEST
-    
-    print("---recv---")
-    hexdump(response)
     await writer.wait_closed()
 
     return response;

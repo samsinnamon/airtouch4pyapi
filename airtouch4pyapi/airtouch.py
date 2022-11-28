@@ -151,10 +151,12 @@ class AirTouch:
     async def SetGroupToTemperatureByGroupName(self, groupName, temperature):
         targetGroup = self._getTargetGroup(groupName)
         await self.SetGroupToTemperature(targetGroup.GroupNumber, temperature);
-
+    ## Verified in AT5
     async def SetGroupToPercentByGroupName(self, groupName, percent):
         targetGroup = self._getTargetGroup(groupName)
         await self.SetGroupToPercentage(targetGroup.GroupNumber, percent);
+
+
 
     async def SetCoolingModeByGroup(self, groupNumber, coolingMode):
         self.SetCoolingModeForAc(self.groups[groupNumber].BelongsToAc, coolingMode);
@@ -260,7 +262,7 @@ class AirTouch:
         if(self.atVersion == AirTouchVersion.AIRTOUCH4):
             controlMessage.SetMessageValue("TargetSetpoint", temperature)
         elif(self.atVersion == AirTouchVersion.AIRTOUCH5):
-            controlMessage.SetMessageValue("TargetSetpoint", int(temperature)*10-100)
+            controlMessage.SetMessageValue("TargetSetpoint", temperature*10-100)
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
         await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
