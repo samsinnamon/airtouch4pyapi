@@ -9,7 +9,7 @@ def MessageObjectToMessagePacket(messageObject, mapName):
     messageString = "80b001";
     messageString += hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType))[2:]
     dataPayload = "";
-    groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[mapName]
+    groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[4][mapName]
     packetInfoAttributes = [attr for attr in groupControlPacketLocationMap.keys()]
     binaryMessagePayloadString = "";
     
@@ -20,6 +20,23 @@ def MessageObjectToMessagePacket(messageObject, mapName):
     dataLength = len(dataPayload) / 2;
     lengthString = "0000"[0: 4 - (len(hex((int(dataLength)))[2:]))] + hex((int(dataLength)))[2:];
     messageString += lengthString + dataPayload
+    return messageString
+
+def MessageObject5ToMessagePacket(messageObject, mapName):
+    messageString = "80b001c0";
+    dataPayload = hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType, 5))[2:]+"00000000040001";
+    groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[5][mapName]
+    packetInfoAttributes = [attr for attr in groupControlPacketLocationMap.keys()]
+    binaryMessagePayloadString = "";
+    
+    for attribute in packetInfoAttributes:
+        binaryMessagePayloadString = AddMapValueToBinaryValue(binaryMessagePayloadString, groupControlPacketLocationMap[attribute], messageObject.MessageValues[attribute])
+
+    dataPayload += format(int(binaryMessagePayloadString, 2), '08x');
+    dataLength = len(dataPayload) / 2;
+    lengthString = "0000"[0: 4 - (len(hex((int(dataLength)))[2:]))] + hex((int(dataLength)))[2:];
+    messageString += lengthString
+    messageString += dataPayload
     return messageString
 
 def AddMapValueToBinaryValue(binaryMessagePayloadString, map, value):
@@ -66,11 +83,16 @@ async def SendMessagePacketToAirtouch(messageString, ipAddress, atVersion):
     else:
         TCP_PORT = 9004
     BUFFER_SIZE = 4096
+    print("---sending---")
+    hexdump(bytearray.fromhex(messageString))
     reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
     writer.write(bytearray.fromhex(messageString))
     response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
     writer.close()
-    print(hexdump(response))
+    ### CEMIL TEST
+    
+    print("---recv---")
+    hexdump(response)
     await writer.wait_closed()
 
     return response;
