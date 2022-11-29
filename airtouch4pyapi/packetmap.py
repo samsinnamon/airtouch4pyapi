@@ -210,6 +210,7 @@ class DataLocationTranslator:
                 #byte number - 2 from the spec, due to fixed message at start
                 "AcNumber" : "1:1-8",
                 "ChunkSize" : "2:1-8",
+                "AcName" : "3:1-128",
                 "StartGroupNumber" : "19:1-8",
                 "GroupCount" : "20:1-8",
                 "CoolModeSupported" : "21:5-5",

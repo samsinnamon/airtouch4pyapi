@@ -97,30 +97,26 @@ class AirTouch:
         #get ac infos
         await self.UpdateAcInfo()
         
+        await self.UpdateAcAbility()
+
         #sort out which AC belongs to which zone/group
-        await self.AssignAcsToGroups()
+        self.AssignAcsToGroups()
+
+    async def UpdateAcAbility(self):
+        acAbilityMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcAbility", self.atVersion);
+        await self.SendMessageToAirtouch(acAbilityMessage)
 
 
-    async def AssignAcsToGroups(self):
-        if(self.atVersion == AirTouchVersion.AIRTOUCH4):
-            #allocate acs to groups (ac ability?)
-
-            acAbilityMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcAbility", self.atVersion);
-            await self.SendMessageToAirtouch(acAbilityMessage)
-
-            for group in self.groups.values():
-                #find out which ac this group belongs to
-                for ac in self.acs.values():
-                    if(ac.StartGroupNumber == 0 and ac.GroupCount == 0):
-                        #assuming this means theres only one ac? so every group belongs to this ac? 
-                        group.BelongsToAc = ac.AcNumber
-                    if(ac.StartGroupNumber <= group.GroupNumber and ac.StartGroupNumber + ac.GroupCount <= group.GroupNumber):
-                        group.BelongsToAc = ac.AcNumber
-        elif(self.atVersion == AirTouchVersion.AIRTOUCH5):
-            ### TODO special casing because I don't have v 1.0.3 and can't test the extended status call. 
-            if(len(self.acs) == 1):
-                for group in self.groups.values():
-                    group.BelongsToAc = 0;
+    def AssignAcsToGroups(self):
+        ## Assign ACs to groups (zones) based on startgroupnumber, count
+        for group in self.groups.values():
+            #find out which ac this group belongs to
+            for ac in self.acs.values():
+                if(ac.StartGroupNumber == 0 and ac.GroupCount == 0):
+                    #assuming this means theres only one ac? so every group belongs to this ac? 
+                    group.BelongsToAc = ac.AcNumber
+                if(ac.StartGroupNumber <= group.GroupNumber and ac.StartGroupNumber + ac.GroupCount <= group.GroupNumber):
+                    group.BelongsToAc = ac.AcNumber
 
     async def UpdateAcInfo(self):
         message = packetmap.MessageFactory.CreateEmptyMessageOfType("AcStatus", self.atVersion);
@@ -134,10 +130,6 @@ class AirTouch:
         nameMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("GroupName", self.atVersion);
         await self.SendMessageToAirtouch(nameMessage)
 
-        if(self.Status != AirTouchStatus.OK and self.atVersion == AirTouchVersion.AIRTOUCH5):
-            # Likely AT5 version < 1.0.3, so update group names to just be Zone + number
-            for group in self.groups.values():
-                group.GroupName = "Zone "+str(group.GroupNumber);
     ## Verified in AT5
     async def TurnGroupOnByName(self, groupName):
         targetGroup = self._getTargetGroup(groupName)
@@ -188,6 +180,7 @@ class AirTouch:
         controlMessage.SetMessageValue("GroupNumber", groupNumber)
         await self.SendMessageToAirtouch(controlMessage)
         return self.groups[groupNumber];
+    
     ## Verified in AT5
     async def TurnAcOn(self, acNumber):
         controlMessage = packetmap.MessageFactory.CreateEmptyMessageOfType("AcControl", self.atVersion);
@@ -357,8 +350,9 @@ class AirTouch:
                 self.DecodeAirtouchAcStatusMessage(dataResult[8::]);
         else:
             messageType = dataResult[17:18]
-            messageSubType = dataResult[20:21]
+            
             if(messageType == b'\xc0'):
+                messageSubType = dataResult[20:21]
                 ### We got a control message
                 if(messageSubType == b'\x21'):
                     ### Zone Status Message
@@ -366,7 +360,14 @@ class AirTouch:
                 if(messageSubType == b'\x23'):
                     ### AC Status Message
                     self.DecodeAirtouch5AcStatusMessage(dataResult[22::]);
-    
+            if(messageType == b'\x1f'):
+                messageSubType = dataResult[21:22]
+                if(messageSubType == b'\x13'):
+                    self.DecodeAirtouch5GroupNames(dataResult[17::]);
+                if(messageSubType == b'\x11'):
+                    self.DecodeAirtouch5AcAbility(dataResult[17::]);
+
+
     def DecodeAirtouchExtendedMessage(self, payload):
         groups = self.groups;
         if(payload[0:2] == b'\xff\x12'):
@@ -387,6 +388,60 @@ class AirTouch:
         if(payload[0:2] == b'\xff\x11'):
             chunkSize = communicate.TranslateMapValueToValue(payload[2:], packetmap.DataLocationTranslator.map[self.atVersion.value]["AcAbility"]["ChunkSize"]);
             self.DecodeAirtouchMessage(payload[2:], packetmap.DataLocationTranslator.map[self.atVersion.value]["AcAbility"], False, chunkSize + 2)
+
+    def DecodeAirtouch5AcAbility(self, payload):
+        #decodes AC Abilities based on page 12 of the comms protocol.  
+
+        
+        dataLength = int.from_bytes(payload[1:3], byteorder='big')-2 #get the data length, subtract the CRC bytes and "header".  This will allow us to track size.  
+        AcCount = 0
+        if( dataLength % 26 != 0):
+            self.Status = AirTouchStatus.ERROR
+            errorMessage = AirTouchError()
+            errorMessage.Message = "Got a response to ACAbility without correct field details"
+            self.Messages.append(errorMessage)
+            return
+        else:
+            AcCount = dataLength / 26
+        
+        payload = payload[5::]
+
+        packetInfoLocationMap = packetmap.DataLocationTranslator.map[self.atVersion.value]["AcAbility"]
+        for i in range(int(AcCount)):
+            AcPayload = payload[i*26:i*26+26]
+            resultList = self.acs
+            resultObject = AirTouchAc()
+            acNumber = communicate.TranslateMapValueToValue(AcPayload, packetInfoLocationMap["AcNumber"]);
+            if acNumber not in resultList:
+                resultList[acNumber] = resultObject;
+            else:
+                resultObject = resultList[acNumber];
+            self.DecodeAttributes(AcPayload, packetInfoLocationMap, resultObject)
+            zoneName = AcPayload[2:18].decode("utf-8").rstrip('\0')
+            resultObject.AcName = zoneName
+
+
+    def DecodeAirtouch5GroupNames(self, payload):
+        #decodes group names based on page 14 of the comms protocol.  
+
+        groups = self.groups;
+        dataLength = int.from_bytes(payload[1:3], byteorder='big')-2 #get the data length, subtract the CRC bytes.  This will allow us to track size.  
+        tracker = 3
+        if(payload[tracker:tracker+2] == b'\xff\x13'):
+            tracker = 5
+            while(tracker < dataLength):
+                zoneNumber = int.from_bytes(payload[tracker:tracker+1], byteorder='big')
+                nameLength = int.from_bytes(payload[tracker+1:tracker+2], byteorder='big')    
+                zoneName = payload[tracker+2:tracker+2+nameLength].decode("utf-8").rstrip('\0')
+                tracker += (2+nameLength)
+                groups[zoneNumber].GroupName = zoneName
+        else:
+            self.Status = AirTouchStatus.ERROR
+            errorMessage = AirTouchError()
+            errorMessage.Message = "Got a response to GroupNames without correct field details"
+            self.Messages.append(errorMessage)
+            for group in self.groups.values():
+                group.GroupName = "Zone "+str(group.GroupNumber);
 
     def DecodeAirtouchMessage(self, payload, map, isGroupBased, chunkSize):
         for chunk in helper.chunks(payload, chunkSize):
@@ -462,25 +517,28 @@ class AirTouch:
                     resultList[acNumber] = resultObject;
                 else:
                     resultObject = resultList[acNumber];
-            packetInfoAttributes = [attr for attr in packetInfoLocationMap.keys()]
-            for attribute in packetInfoAttributes:
-                mapValue = communicate.TranslateMapValueToValue(chunk, packetInfoLocationMap[attribute])
-                translatedValue = packetmap.SettingValueTranslator.RawValueToNamedValue(attribute, mapValue, AirTouchVersion.AIRTOUCH5.value);
-                if(attribute.endswith("ModeSupported") and translatedValue != 0):
-                    modeSupported = [];
-                    if(hasattr(resultObject, "ModeSupported")):
-                        modeSupported = resultObject.ModeSupported
-                    modeSupported.append(attribute.replace("ModeSupported", ""));
-                    setattr(resultObject, "ModeSupported", modeSupported)
-                elif(attribute.endswith("FanSpeedSupported") and translatedValue != 0):
-                    modeSupported = [];
-                    if(hasattr(resultObject, "FanSpeedSupported")):
-                        modeSupported = resultObject.FanSpeedSupported
-                    modeSupported.append(attribute.replace("FanSpeedSupported", ""));
-                    setattr(resultObject, "FanSpeedSupported", modeSupported)
-                else:
-                    setattr(resultObject, attribute, translatedValue)
-
+            self.DecodeAttributes(chunk, packetInfoLocationMap, resultObject)
+    
+    def DecodeAttributes(self, chunk, packetInfoLocationMap, resultObject):
+        packetInfoAttributes = [attr for attr in packetInfoLocationMap.keys()]
+        for attribute in packetInfoAttributes:
+            mapValue = communicate.TranslateMapValueToValue(chunk, packetInfoLocationMap[attribute])
+            translatedValue = packetmap.SettingValueTranslator.RawValueToNamedValue(attribute, mapValue, AirTouchVersion.AIRTOUCH5.value);
+            if(attribute.endswith("ModeSupported") and translatedValue != 0):
+                modeSupported = [];
+                if(hasattr(resultObject, "ModeSupported")):
+                    modeSupported = resultObject.ModeSupported
+                modeSupported.append(attribute.replace("ModeSupported", ""));
+                setattr(resultObject, "ModeSupported", modeSupported)
+            elif(attribute.endswith("FanSpeedSupported") and translatedValue != 0):
+                modeSupported = [];
+                if(hasattr(resultObject, "FanSpeedSupported")):
+                    modeSupported = resultObject.FanSpeedSupported
+                modeSupported.append(attribute.replace("FanSpeedSupported", ""));
+                setattr(resultObject, "FanSpeedSupported", modeSupported)
+            else:
+                setattr(resultObject, attribute, translatedValue)
+    
     def DecodeAirtouchGroupStatusMessage(self, payload):
         self.DecodeAirtouchMessage(payload, packetmap.DataLocationTranslator.map[self.atVersion.value]["GroupStatus"], True, 6);
     
