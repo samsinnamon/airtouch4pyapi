@@ -2,8 +2,7 @@ from airtouch4pyapi import packetmap
 import asyncio
 import errno
 from socket import error as socket_error
-#### CEMIL TEST
-from hexdump import hexdump
+#from hexdump import hexdump # for debugging
 
 def MessageObjectToMessagePacket(messageObject, mapName):
     messageString = "80b001";
@@ -83,13 +82,13 @@ async def SendMessagePacketToAirtouch(messageString, ipAddress, atVersion):
     else:
         TCP_PORT = 9004
     BUFFER_SIZE = 4096
-    #hexdump(bytearray.fromhex(messageString))
+    #hexdump(bytearray.fromhex(messageString)) # for debugging
     reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
     writer.write(bytearray.fromhex(messageString))
     response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
     writer.close()
     await writer.wait_closed()
-    #hexdump(response)
+    #hexdump(response) # for debugging
     return response;
 
 import numpy as np
