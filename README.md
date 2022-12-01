@@ -13,6 +13,13 @@ To initialise:
 * `airTouch = AirTouch("192.168.1.19")`
 * `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5)`
 
+As a test:
+
+Use the demo.py file and pass in an AirTouch IP.  It takes you through a few tests.  
+
+## Notes
+AirTouch5: If you turn off all zones, the AC itself turns off.  Turning on a zone does not turn the AC back on by itself.  You must turn it back on too.  Same behaviour in 'official' app.  
+
 To load:
 * `await airTouch.UpdateInfo();` -- This loads the config from the AirTouch.  Make sure you check for any errors before using it.  It will load the Group/Zone info, the AC info, then capabilities.  This needs to happen prior to using. 
 
