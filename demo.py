@@ -14,8 +14,8 @@ def print_acs(acs):
     for ac in acs:
         print(f"AC Name: {ac.AcName:15s} AC Number: {ac.AcNumber:3d} IsOn: {ac.IsOn} PowerState: {ac.PowerState:3s} Target: {ac.AcTargetSetpoint:3.1f} Temp: {ac.Temperature:3.1f} Modes Supported: {ac.ModeSupported} Fans Supported: {ac.FanSpeedSupported} startGroup: {ac.StartGroupNumber: 2d} GroupCount: {ac.GroupCount:2d}")
 
-async def updateInfoAndDisplay() -> asyncio.coroutine:
-    at = AirTouch("192.168.8.86")
+async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
+    at = AirTouch(ip)
     await at.UpdateInfo()
     if(at.Status != AirTouchStatus.OK):
         print("Got an error updating info.  Exiting")
@@ -86,5 +86,8 @@ async def updateInfoAndDisplay() -> asyncio.coroutine:
 #    await at.SetGroupToPercentByGroupName("Zone 1", 5)
 
 if __name__ == '__main__':
-    asyncio.run(updateInfoAndDisplay())
+    if len(sys.argv) < 2:
+        print("nom nom nom give me an IP of an AirTouch system")
+        sys.exit(1)
+    asyncio.run(updateInfoAndDisplay(sys.argv[1]))
     
