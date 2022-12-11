@@ -29,14 +29,14 @@ from enum import Enum
         #GetAcs
 
 class AirTouchStatus(Enum):
-    NOT_CONNECTED = 0,
-    OK = 1,
-    CONNECTION_INTERRUPTED = 2,
-    CONNECTION_LOST = 3,
+    NOT_CONNECTED = 0
+    OK = 1
+    CONNECTION_INTERRUPTED = 2
+    CONNECTION_LOST = 3
     ERROR = 4
 
 class AirTouchVersion(Enum):
-    AIRTOUCH4 = 4,
+    AIRTOUCH4 = 4
     AIRTOUCH5 = 5
 
 class AirTouchGroup:
@@ -69,16 +69,26 @@ class AirTouchAc:
 class AirTouch:
     IpAddress = "";
     SettingValueTranslator = packetmap.SettingValueTranslator();
-    def __init__(self, ipAddress, atVersion = None):
+    def __init__(self, ipAddress, atVersion = None, port = None):
         self.IpAddress = ipAddress;
         self.Status = AirTouchStatus.NOT_CONNECTED;
         self.Messages = dict();
         self.atVersion = atVersion;
+        self.atPort = port;
         self.acs = dict();
         self.groups = dict();
         self.Messages:List[AirTouchError] = [];
     
     async def UpdateInfo(self):
+        if(self.atPort != None and self.atVersion == None):
+            self.Status = AirTouchStatus.ERROR
+            errorMessage = AirTouchError()
+            errorMessage.Message = "If you specify a port, you must specify a version"
+            self.Messages.append(errorMessage)
+            print(self.Status)
+            for msg in self.Messages:
+                print(msg.Message);
+            return;
 
         if(self.atVersion == None):
             await self.findVersion()
@@ -113,9 +123,11 @@ class AirTouch:
     async def findVersion(self):
         if(await self.isOpen(self.IpAddress, 9004)):
             self.atVersion = AirTouchVersion.AIRTOUCH4
+            self.atPort = 9004
             return
         elif(await self.isOpen(self.IpAddress, 9005)):
             self.atVersion = AirTouchVersion.AIRTOUCH5
+            self.atPort = 9005
             return
         else:
             self.Status = AirTouchStatus.ERROR
@@ -341,7 +353,7 @@ class AirTouch:
             if(messageObject.MessageType == "AcStatus"): 
                 MESSAGE = "80b0012d0000f4cf"
             if(messageObject.MessageType == "GroupControl" or messageObject.MessageType == "AcControl"):
-                MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType);
+                MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType, self.atVersion);
         
         elif(self.atVersion == AirTouchVersion.AIRTOUCH5):
             if(messageObject.MessageType == "GroupStatus"):
@@ -353,9 +365,9 @@ class AirTouch:
             if(messageObject.MessageType == "AcStatus"):
                 MESSAGE = "80b001c000082300000000000000"
             if(messageObject.MessageType == "GroupControl" or messageObject.MessageType == "AcControl"):
-                MESSAGE = communicate.MessageObject5ToMessagePacket(messageObject, messageObject.MessageType);
+                MESSAGE = communicate.MessageObjectToMessagePacket(messageObject, messageObject.MessageType, self.atVersion);
         try: 
-            dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress, self.atVersion)
+            dataResult = await communicate.SendMessagePacketToAirtouch(MESSAGE, self.IpAddress, self.atVersion, self.atPort)
             self.Status = AirTouchStatus.OK
         except Exception as e: 
             if(self.Status == AirTouchStatus.OK):
@@ -455,6 +467,7 @@ class AirTouch:
                 resultObject = AirTouchAc()
                 acNumber = communicate.TranslateMapValueToValue(chunk, packetInfoLocationMap["AcNumber"]);
                 if acNumber not in resultList:
+                    resultObject.AcName = "AC " + str(acNumber)
                     resultList[acNumber] = resultObject;
                 else:
                     resultObject = resultList[acNumber];
