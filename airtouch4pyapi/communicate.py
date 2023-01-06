@@ -2,22 +2,32 @@ from airtouch4pyapi import packetmap
 import asyncio
 import errno
 from socket import error as socket_error
+#from hexdump import hexdump # for debugging
 
-def MessageObjectToMessagePacket(messageObject, mapName):
-    messageString = "80b001";
-    messageString += hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType))[2:]
-    dataPayload = "";
-    groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[mapName]
+def MessageObjectToMessagePacket(messageObject, mapName, atVersion):
+    if(atVersion.value == 5):
+        messageString = "80b001c0";
+        dataPayload = hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType, 5))[2:]+"00000000040001";
+        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[4][mapName]
+    elif(atVersion.value == 4):
+        messageString = "80b001";
+        messageString += hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType))[2:]
+        dataPayload = "";
+        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[5][mapName]
+    
     packetInfoAttributes = [attr for attr in groupControlPacketLocationMap.keys()]
     binaryMessagePayloadString = "";
-    
     for attribute in packetInfoAttributes:
         binaryMessagePayloadString = AddMapValueToBinaryValue(binaryMessagePayloadString, groupControlPacketLocationMap[attribute], messageObject.MessageValues[attribute])
-
     dataPayload = format(int(binaryMessagePayloadString, 2), '08x');
     dataLength = len(dataPayload) / 2;
     lengthString = "0000"[0: 4 - (len(hex((int(dataLength)))[2:]))] + hex((int(dataLength)))[2:];
-    messageString += lengthString + dataPayload
+
+    if(atVersion.value == 5):
+        messageString += lengthString
+        messageString += dataPayload
+    elif(atVersion.value == 4):
+        messageString += lengthString + dataPayload
     return messageString
 
 def AddMapValueToBinaryValue(binaryMessagePayloadString, map, value):
@@ -56,20 +66,20 @@ def TranslateMapValueToValue(groupChunk, map):
     return byteSegmentAsValue
 
 #might raise a socket or os error if connection fails
-async def SendMessagePacketToAirtouch(messageString, ipAddress):
+async def SendMessagePacketToAirtouch(messageString, ipAddress, atVersion, atPort):
     #add header, add crc
-    messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
-
-    TCP_PORT = 9004
+    if(atVersion.value == 5):
+        messageString = "555555aa" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
+    else:
+        messageString = "5555" + messageString + format(crc16(bytes.fromhex(messageString)), '08x')[4:]
     BUFFER_SIZE = 4096
-    reader, writer = await asyncio.open_connection(ipAddress, TCP_PORT)
-
+    #hexdump(bytearray.fromhex(messageString)) # for debugging
+    reader, writer = await asyncio.open_connection(ipAddress, atPort)
     writer.write(bytearray.fromhex(messageString))
     response = await asyncio.wait_for(reader.read(BUFFER_SIZE), timeout=2.0)
-    
     writer.close()
     await writer.wait_closed()
-
+    #hexdump(response) # for debugging
     return response;
 
 import numpy as np
