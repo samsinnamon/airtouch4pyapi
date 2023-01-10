@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="airtouch4pyapi", # Replace with your own username
-    version="1.0.4",
+    version="1.0.7",
     author="Sam Sinnamon",
     author_email="samsinnamon@hotmail.com",
     description="An api allowing control of AC state (temperature, on/off, mode) of an Airtouch 4 controller locally over TCP",

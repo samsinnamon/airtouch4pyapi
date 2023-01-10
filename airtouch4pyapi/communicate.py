@@ -8,18 +8,20 @@ def MessageObjectToMessagePacket(messageObject, mapName, atVersion):
     if(atVersion.value == 5):
         messageString = "80b001c0";
         dataPayload = hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType, 5))[2:]+"00000000040001";
-        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[4][mapName]
+        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[5][mapName]
+    
     elif(atVersion.value == 4):
         messageString = "80b001";
         messageString += hex(packetmap.SettingValueTranslator.NamedValueToRawValue("MessageType", messageObject.MessageType))[2:]
         dataPayload = "";
-        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[5][mapName]
+        groupControlPacketLocationMap = packetmap.DataLocationTranslator.map[4][mapName]
     
     packetInfoAttributes = [attr for attr in groupControlPacketLocationMap.keys()]
     binaryMessagePayloadString = "";
     for attribute in packetInfoAttributes:
         binaryMessagePayloadString = AddMapValueToBinaryValue(binaryMessagePayloadString, groupControlPacketLocationMap[attribute], messageObject.MessageValues[attribute])
-    dataPayload = format(int(binaryMessagePayloadString, 2), '08x');
+
+    dataPayload += format(int(binaryMessagePayloadString, 2), '08x');
     dataLength = len(dataPayload) / 2;
     lengthString = "0000"[0: 4 - (len(hex((int(dataLength)))[2:]))] + hex((int(dataLength)))[2:];
 
