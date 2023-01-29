@@ -287,7 +287,7 @@ class AirTouch:
     def GetSupportedFanSpeedsForAc(self, acNumber):
         return self.acs[acNumber].FanSpeedSupported;
 
-
+    
 
     ## Group/Zone temperatures
     async def SetGroupToTemperature(self, groupNumber, temperature):
@@ -337,6 +337,12 @@ class AirTouch:
         return groups;
         #returns a list of groups, each group has a name, a number, on or off, current damper opening, current temp and target temp
 
+    def GetVersion(self):
+        if(self.atVersion == AirTouchVersion.AIRTOUCH4):
+            return "4"
+        elif(self.atVersion == AirTouchVersion.AIRTOUCH5):
+            return "5"
+        return ""
     ## END Helper functions
 
 
@@ -593,13 +599,15 @@ class AirTouch:
                 modeSupported = [];
                 if(hasattr(resultObject, "ModeSupported")):
                     modeSupported = resultObject.ModeSupported
-                modeSupported.append(attribute.replace("ModeSupported", ""));
+                if attribute.replace("ModeSupported", "") not in modeSupported:
+                    modeSupported.append(attribute.replace("ModeSupported", ""));
                 setattr(resultObject, "ModeSupported", modeSupported)
             elif(attribute.endswith("FanSpeedSupported") and translatedValue != 0):
                 modeSupported = [];
                 if(hasattr(resultObject, "FanSpeedSupported")):
                     modeSupported = resultObject.FanSpeedSupported
-                modeSupported.append(attribute.replace("FanSpeedSupported", ""));
+                if attribute.replace("FanSpeedSupported", "") not in modeSupported:
+                    modeSupported.append(attribute.replace("FanSpeedSupported", ""));
                 setattr(resultObject, "FanSpeedSupported", modeSupported)
             else:
                 setattr(resultObject, attribute, translatedValue)
