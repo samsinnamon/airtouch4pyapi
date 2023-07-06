@@ -17,7 +17,7 @@ As a test:
 
 Use the demo.py file and pass in an AirTouch IP.  It takes you through a few tests.  
 
-    python3 demo.pi IPADDRESS
+    python3 demo.py IPADDRESS
 
 ## Notes
 AirTouch5: If you turn off all zones, the AC itself turns off.  Turning on a zone does not turn the AC back on by itself.  You must turn it back on too.  Same behaviour in 'official' app.  
