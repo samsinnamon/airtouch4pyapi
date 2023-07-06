@@ -14,7 +14,7 @@ def print_acs(acs):
     for ac in acs:
         print(f"AC Name: {ac.AcName:15s} AC Number: {ac.AcNumber:3d} IsOn: {ac.IsOn} PowerState: {ac.PowerState:3s} Target: {ac.AcTargetSetpoint:3.1f} Temp: {ac.Temperature:3.1f} Modes Supported: {ac.ModeSupported} Fans Supported: {ac.FanSpeedSupported} startGroup: {ac.StartGroupNumber: 2d} GroupCount: {ac.GroupCount:2d} Spill: {ac.Spill}")
 
-async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
+async def updateInfoAndDisplay(ip) -> asyncio.coroutines:
     at = AirTouch(ip)
     await at.UpdateInfo()
     if(at.Status != AirTouchStatus.OK):
@@ -59,7 +59,7 @@ async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
         print("GROUP/ZONE INFO AFTER SET TEMP + 1")
         print("----------")
         print_groups(groups)
-        
+
     val = input("Do you want to set group 0's mode to heat then back to cool? (y/n): ")
     if(val.lower() == "y"):
         await at.SetCoolingModeByGroup(0, 'Heat')
@@ -76,7 +76,7 @@ async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
 #    time.sleep(4);
 #    await at.TurnGroupOn(0)
 #    print("Turned on group 0")
-    
+
 #    await at.TurnAcOff(0)
 #    print("Turned off ac 0, sleeping 4")
 #    time.sleep(4);
@@ -90,4 +90,3 @@ if __name__ == '__main__':
         print("nom nom nom give me an IP of an AirTouch system")
         sys.exit(1)
     asyncio.run(updateInfoAndDisplay(sys.argv[1]))
-    
