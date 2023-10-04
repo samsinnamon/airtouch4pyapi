@@ -40,7 +40,7 @@ def print_all_json(groups, acs):
     print(json.dumps(result, indent=4))
 
 # Asynchronous function to get information
-async def getInfo(args) -> asyncio.coroutine:
+async def getInfo(args) -> asyncio.coroutines:
     # Create an instance of the AirTouch class
     at = AirTouch(args.ip)
     # Update the information
@@ -58,7 +58,7 @@ async def getInfo(args) -> asyncio.coroutine:
     print_all_json(groups,acs)
 
 # Asynchronous function to set the status
-async def setStatus(args) -> asyncio.coroutine:
+async def setStatus(args) -> asyncio.coroutines:
     # Create an instance of the AirTouch class
     at = AirTouch(args.ip)
     # Update the information
