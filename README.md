@@ -10,8 +10,10 @@ Others are using it with Airtouch 5 and see no issues.
 
 ## Usage
 To initialise:
-* `airTouch = AirTouch("192.168.1.19")`
-* `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5)`
+* `airTouch = AirTouch("192.168.1.19")` - this is automatic version detection and typically works well
+* `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5, PORTNUMBER)` - this is explicit declarion of the AirTouch version and port number.
+
+Note that using only something like `airTouch = AirTouch("192.168.1.1", AirTouchVersion.AIRTOUCH5)` will probably result in the code not working properly
 
 As a test:
 
@@ -42,4 +44,8 @@ AC Level Functions
 * `GetSupportedCoolingModesForAc`
 * `GetSupportedFanSpeedsForAc`
 * `GetAcs`
+
+## Companion Scripts
+* `demo.py` runs through a basic set of commands to the AirTouch to check for status and perform some operations
+* `control.py` provides some basic command line functionality. Check the usage message or the comments in the code for detailed usage instructions
 
