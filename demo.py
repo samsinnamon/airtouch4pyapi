@@ -3,7 +3,7 @@ import sys
 import asyncio
 import time
 
-from airtouch4pyapi import AirTouch, AirTouchStatus, AirTouchVersion
+from airtouch4pyapi import AirTouch, AirTouchStatus, AirTouchVersion, autoDiscoverAirtouch
 
 def print_groups(groups):
     for group in groups:
@@ -14,8 +14,7 @@ def print_acs(acs):
     for ac in acs:
         print(f"AC Name: {ac.AcName:15s} AC Number: {ac.AcNumber:3d} IsOn: {ac.IsOn} PowerState: {ac.PowerState:3s} Target: {ac.AcTargetSetpoint:3.1f} Temp: {ac.Temperature:3.1f} Modes Supported: {ac.ModeSupported} Fans Supported: {ac.FanSpeedSupported} startGroup: {ac.StartGroupNumber: 2d} GroupCount: {ac.GroupCount:2d} Spill: {ac.Spill}")
 
-async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
-    at = AirTouch(ip)
+async def updateInfoAndDisplay(at) -> asyncio.coroutines:
     await at.UpdateInfo()
     if(at.Status != AirTouchStatus.OK):
         print("Got an error updating info.  Exiting")
@@ -87,7 +86,13 @@ async def updateInfoAndDisplay(ip) -> asyncio.coroutine:
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("nom nom nom give me an IP of an AirTouch system")
-        sys.exit(1)
-    asyncio.run(updateInfoAndDisplay(sys.argv[1]))
-    
+        print("Auto-discovering AirTouch console.")
+        at = autoDiscoverAirtouch()
+
+        if at is None:
+            print("nom nom nom give me an IP of an AirTouch system")
+            sys.exit(1)
+    else:
+        at = AirTouch(sys.argv[1])
+
+    asyncio.run(updateInfoAndDisplay(at))

@@ -28,6 +28,9 @@ from enum import Enum
         #GetSupportedFanSpeedsForAc
         #GetAcs
 
+AT4PORT = 9004
+AT5PORT = 9005
+
 class AirTouchStatus(Enum):
     NOT_CONNECTED = 0
     OK = 1
@@ -78,6 +81,13 @@ class AirTouch:
         self.acs = dict();
         self.groups = dict();
         self.Messages:List[AirTouchError] = [];
+
+        # if atVersion is provided but port is not, it'll never get set so do it here.
+        if self.atVersion is not None and self.atPort is None:
+            if AirTouchVersion.AIRTOUCH4 == self.atVersion:
+                self.atPort = AT4PORT
+            else:
+                self.atPort = AT5PORT
     
     async def UpdateInfo(self):
         if(self.atPort != None and self.atVersion == None):
@@ -121,13 +131,13 @@ class AirTouch:
         self.AssignAcsToGroups()
 
     async def findVersion(self):
-        if(await self.isOpen(self.IpAddress, 9004)):
+        if(await self.isOpen(self.IpAddress, AT4PORT)):
             self.atVersion = AirTouchVersion.AIRTOUCH4
-            self.atPort = 9004
+            self.atPort = AT4PORT
             return
-        elif(await self.isOpen(self.IpAddress, 9005)):
+        elif(await self.isOpen(self.IpAddress, AT5PORT)):
             self.atVersion = AirTouchVersion.AIRTOUCH5
-            self.atPort = 9005
+            self.atPort = AT5PORT
             return
         else:
             self.Status = AirTouchStatus.ERROR
@@ -338,10 +348,9 @@ class AirTouch:
         #returns a list of groups, each group has a name, a number, on or off, current damper opening, current temp and target temp
 
     def GetVersion(self):
-        if(self.atVersion == AirTouchVersion.AIRTOUCH4):
-            return "4"
-        elif(self.atVersion == AirTouchVersion.AIRTOUCH5):
-            return "5"
+        if self.atVersion is not None:
+            return str(self.atVersion.value)
+
         return ""
     ## END Helper functions
 
@@ -631,4 +640,68 @@ class AirTouch:
     
     def _getTargetGroup(self, groupName):
         return [group for group in self.groups.values() if group.GroupName == groupName][0]
-    
+
+
+def autoDiscoverAirtouch(attempts=1, timeout=5):
+    """ Attempts to discover the AirTouch console automatically using the search port and search packet defined in
+    the AirTouch_Tab apk's source installed on the console.
+
+    We send the special search packet below and the AirTouchTab responds on our port 49004 with the message:
+    '<ip>,<mac>,<AirTouch4|AirTouch5>,<deviceId>'
+
+    TODO It responding with AirTouch5 is just a guess at this stage as I don't have one to test with. Validate this.
+
+    param attempts:
+        The number of times we attempt discovery.
+    param timeout:
+        The number of seconds the socket should remain listening
+
+    returns:
+        An AirTouch object if discovery was successful or None if not.
+    """
+
+    # TODO determine if this port should be different for AirTouch 5. Looking at the main control ports defined above
+    # (9004 AT4 and 9005 AT5) it seems likely that if they kept this discovery method for AT5 they may have bumped the
+    # search port to 59005 or 49005 (I think the former more likely). Hopefully someone with an AirTouch 5 will be able
+    # test this since I only have an AT4
+    at4SearchPort = 49004  # UDP port. Found by reversing the Tablet app.
+    bdcastAddr = "255.255.255.255"
+
+    # The data the console's apk listener thread is expecting. HF-A11 refers to the wifi module on the console's PCB
+    # it seems.
+    searchPacket = b"HF-A11ASSISTHREAD"
+
+    airTouch = None
+
+    try:
+        searchSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        searchSock.settimeout(timeout)
+        searchSock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        searchSock.bind(("0.0.0.0", at4SearchPort))
+
+        for _ in range(attempts):
+            try:
+                searchSock.sendto(searchPacket, (bdcastAddr, at4SearchPort))
+
+                # We get our own broadcast so ignore those bytes first.
+                _, _ = searchSock.recvfrom(len(searchPacket))
+
+                data, addr = searchSock.recvfrom(256)
+                data = data.decode("utf-8")
+
+                if "airtouch" in data.lower():
+                    ip, _, at, _ = data.split(",")
+
+                    try:
+                        atVersion = AirTouchVersion[at.upper()]
+                    except KeyError:
+                        raise Exception(f"Unsupported AirTouch version discovered {at}")
+
+                    airTouch = AirTouch(ip, atVersion)
+            except socket.timeout:
+                continue
+    except Exception as err:
+        print(f"AirTouch auto discovery failed: {err}")
+
+    return airTouch
