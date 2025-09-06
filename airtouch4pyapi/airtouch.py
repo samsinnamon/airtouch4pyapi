@@ -50,6 +50,15 @@ class AirTouchGroup:
         self.Temperature = 0
         self.TargetSetpoint = 0
         self.BelongsToAc = -1
+    def to_dict(self):
+        return {  'GroupName': self.GroupName, 
+                  'GroupNumber': self.GroupNumber, 
+                  'PowerState': self.PowerState, 
+                  'OpenPercent': self.OpenPercent, 
+                  'Temperature': self.Temperature, 
+                  'TargetSetpoint': self.TargetSetpoint, 
+                  'BelongsToAc': self.BelongsToAc, 
+               }
     @property
     def IsOn(self):
         return self.PowerState
@@ -65,6 +74,17 @@ class AirTouchAc:
         self.AcNumber = 0
         self.StartGroupNumber = 0
         self.GroupCount = 0
+    def to_dict(self):
+        return {  'AcName': self.AcName, 
+                  'AcNumber': self.AcNumber, 
+                  'StartGroupNumber': self.StartGroupNumber, 
+                  'PowerState': self.PowerState,
+                  'AcMode': self.AcMode,
+                  'AcTargetSetpoint': self.AcTargetSetpoint,
+                  'Temperature': self.Temperature,
+                  'GroupCount': self.GroupCount,
+                  'AcFanSpeed': self.AcFanSpeed,
+               }
     @property
     def IsOn(self):
         return self.PowerState
